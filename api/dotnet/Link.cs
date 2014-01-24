@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
-using System.Security.Cryptography;
+
 namespace ssdb
 {
     class Link
@@ -38,31 +38,31 @@ namespace ssdb
 
         public List<byte[]> request(string cmd, params string[] args)
         {
-            List<byte[]> req = new List<byte[]>(1 + args.Length);
-            req.Add(Encoding.Default.GetBytes(cmd));
-            foreach (string s in args)
-            {
-                req.Add(Encoding.Default.GetBytes(s));
-            }
-            return this.request(req);
+		List<byte[]> req = new List<byte[]>(1 + args.Length);
+            	req.Add(Encoding.Default.GetBytes(cmd));
+            	foreach (string s in args)
+            	{
+                	req.Add(Encoding.Default.GetBytes(s));
+            	}
+            	return this.request(req);
         }
-		public async Task<List<byte[]>> requestAsync(string cmd, params string[] args)
+	public async Task<List<byte[]>> requestAsync(string cmd, params string[] args)
+	{
+		List<byte[]> req = new List<byte[]>(1 + args.Length);
+		req.Add(Encoding.Default.GetBytes(cmd));
+		foreach (string s in args)
 		{
-			List<byte[]> req = new List<byte[]>(1 + args.Length);
-			req.Add(Encoding.Default.GetBytes(cmd));
-			foreach (string s in args)
-			{
-				req.Add(Encoding.Default.GetBytes(s));
-			}
-			return await this.requestAsync(req);
+			req.Add(Encoding.Default.GetBytes(s));
 		}
+		return await this.requestAsync(req);
+	}
 
         public List<byte[]> request(string cmd, params byte[][] args)
         {
-            List<byte[]> req = new List<byte[]>(1 + args.Length);
-            req.Add(Encoding.Default.GetBytes(cmd));
-            req.AddRange(args);
-            return this.request(req);
+		List<byte[]> req = new List<byte[]>(1 + args.Length);
+              	req.Add(Encoding.Default.GetBytes(cmd));
+            	req.AddRange(args);
+            	return this.request(req);
         }
 		public async Task<List<byte[]>> requestAsync(string cmd, params byte[][] args)
 		{
@@ -74,112 +74,112 @@ namespace ssdb
 
         public List<byte[]> request(List<byte[]> req)
         {
-			MemoryStream buf = new MemoryStream(); byte[] bs = requestcommon(req, buf);
-			sock.GetStream().Write(bs, 0, (int)buf.Length);
-            return recv();
+		MemoryStream buf = new MemoryStream(); byte[] bs = requestcommon(req, buf);
+		sock.GetStream().Write(bs, 0, (int)buf.Length);
+            	return recv();
         }
-		public async Task<List<byte[]>> requestAsync(List<byte[]> req)
+	public async Task<List<byte[]>> requestAsync(List<byte[]> req)
+	{
+		MemoryStream buf = new MemoryStream(); 
+		byte[] bs = requestcommon(req, buf);
+		Task<List<byte[]>> parent = Task<List<byte[]>>.Factory.StartNew(() =>
 		{
-			MemoryStream buf = new MemoryStream(); 
-			byte[] bs = requestcommon(req, buf);
-			Task<List<byte[]>> parent = Task<List<byte[]>>.Factory.StartNew(() =>
-			{
-				sock.GetStream().WriteAsync(bs, 0, (int)buf.Length);
-			    Task<List<byte[]>>  child = Task<List<byte[]>>.Factory.StartNew(() => { return recvAsync().Result; }, TaskCreationOptions.AttachedToParent);
+			sock.GetStream().WriteAsync(bs, 0, (int)buf.Length);
+			Task<List<byte[]>>  child = Task<List<byte[]>>.Factory.StartNew(() => { return recvAsync().Result; }, TaskCreationOptions.AttachedToParent);
 				return child.Result;
-			}, TaskCreationOptions.PreferFairness);
+		}, TaskCreationOptions.PreferFairness);
 
-			return await parent;
+		return await parent;
 
-		}
+	}
 
-		private byte[] requestcommon(List<byte[]> req, MemoryStream buf)
+	private byte[] requestcommon(List<byte[]> req, MemoryStream buf)
+	{
+		foreach (byte[] p in req)
 		{
-			foreach (byte[] p in req)
-			{
-				byte[] len = Encoding.Default.GetBytes(p.Length.ToString());
-				buf.Write(len, 0, len.Length);
-				buf.WriteByte((byte)'\n');
-				buf.Write(p, 0, p.Length);
-				buf.WriteByte((byte)'\n');
-			}
+			byte[] len = Encoding.Default.GetBytes(p.Length.ToString());
+			buf.Write(len, 0, len.Length);
 			buf.WriteByte((byte)'\n');
-
-			byte[] bs = buf.GetBuffer();
-			//Console.Write(Encoding.Default.GetString(bs, 0, (int)buf.Length));
-            return bs;
-
+			buf.Write(p, 0, p.Length);
+			buf.WriteByte((byte)'\n');
 		}
+		buf.WriteByte((byte)'\n');
+
+		byte[] bs = buf.GetBuffer();
+			//Console.Write(Encoding.Default.GetString(bs, 0, (int)buf.Length));
+            	return bs;
+
+	}
 		
 
         private List<byte[]> recv()
         {
-            while (true)
-            {
-                List<byte[]> ret = parse();
-                if (ret != null)
-                {
-                    return ret;
-                }
-                byte[] bs = new byte[8192];
-                int len = sock.GetStream().Read(bs, 0, bs.Length);
-                //Console.WriteLine("<< " + Encoding.Default.GetString(bs));
-                recv_buf.Write(bs, 0, len);
-            }
+		while (true)
+            	{
+                	List<byte[]> ret = parse();
+                	if (ret != null)
+                	{
+                    		return ret;
+                	}
+                	byte[] bs = new byte[8192];
+                	int len = sock.GetStream().Read(bs, 0, bs.Length);
+                	//Console.WriteLine("<< " + Encoding.Default.GetString(bs));
+                	recv_buf.Write(bs, 0, len);
+            	}
         }
-		public async Task<List<byte[]>> recvAsync()
+	public async Task<List<byte[]>> recvAsync()
+	{
+		while (true)
 		{
-			while (true)
+			List<byte[]> ret = parse();
+			if (ret != null)
 			{
-				List<byte[]> ret = parse();
-				if (ret != null)
-				{
-					return ret;
-				}
-				byte[] bs = new byte[8192];
-				int len = await sock.GetStream().ReadAsync(bs, 0, bs.Length);
-				//Console.WriteLine("<< " + Encoding.Default.GetString(bs));
-				recv_buf.Write(bs, 0, len);				
+				return ret;
 			}
+			byte[] bs = new byte[8192];
+			int len = await sock.GetStream().ReadAsync(bs, 0, bs.Length);
+			//Console.WriteLine("<< " + Encoding.Default.GetString(bs));
+			recv_buf.Write(bs, 0, len);				
 		}
+	}
 
         private static int memchr(byte[] bs, byte b, int offset)
         {
-            for (int i = offset; i < bs.Length; i++)
-            {
-                if (bs[i] == b)
-                {
-                    return i;
-                }
-            }
-            return -1;
+           	for (int i = offset; i < bs.Length; i++)
+            	{
+                	if (bs[i] == b)
+                	{
+                		 return i;
+                	}
+            	}
+            	return -1;
         }
 
         private List<byte[]> parse()
         {
-            List<byte[]> list = new List<byte[]>();
-            byte[] buf = recv_buf.GetBuffer();
+            	List<byte[]> list = new List<byte[]>();
+            	byte[] buf = recv_buf.GetBuffer();
 
-            int idx = 0;
-            while (true)
-            {
-                int pos = memchr(buf, (byte)'\n', idx);
-                //System.out.println("pos: " + pos + " idx: " + idx);
-                if (pos == -1)
+            	int idx = 0;
+            	while (true)
+            	{
+                	int pos = memchr(buf, (byte)'\n', idx);
+                	//System.out.println("pos: " + pos + " idx: " + idx);
+                	if (pos == -1)
+                	{
+                    		break;
+                	}
+			if (pos == idx || (pos == idx + 1 && buf[idx] == '\r'))
                 {
-                    break;
-                }
-				if (pos == idx || (pos == idx + 1 && buf[idx] == '\r'))
-                {
-                    idx += 1; // if '\r', next time will skip '\n'
+        	idx += 1; // if '\r', next time will skip '\n'
                     // ignore empty leading lines
-                    if (list.Count == 0)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        int left = (int)recv_buf.Length - idx;
+        	if (list.Count == 0)
+        	{
+        		continue;
+        	}
+        	else
+        	{
+        		int left = (int)recv_buf.Length - idx;
                         recv_buf = new MemoryStream(8192);
                         if (left > 0)
                         {
